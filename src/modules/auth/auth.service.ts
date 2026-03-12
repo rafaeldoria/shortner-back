@@ -1,20 +1,26 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UserModel } from "./auth.model";
-import { RegisterDTO } from "./auth.types";
+import { LoginDTO, RegisterDTO } from "./auth.types";
 import { env } from "../../config/env";
 
 const MIN_PASSWORD = 5;
 
 export class AuthService {
     async register(data: RegisterDTO) {
-        const { login, password } = data;
+        const { username, email, password } = data;
 
         if (password.length < MIN_PASSWORD) {
             throw new Error("Password is not valid.");
         }
 
-        const userExists = await UserModel.findOne({ login });
+        if (!username || !email || !password) {
+            throw new Error("Missing required fields");
+        }
+
+        const userExists = await UserModel.findOne({
+            $or: [{ username }, { email }]
+        });
 
         if (userExists) {
             throw new Error("User already exists");
@@ -23,21 +29,25 @@ export class AuthService {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const user = await UserModel.create({
-            login,
+            username,
+            email,
             password: hashedPassword,
-        })
+        });
 
         return {
             id: user._id,
-            login: user.login,
+            username: user.username,
+            email: user.email,
             createdAt: user.createdAt
-        }
+        };
     }
 
-    async login(data: { login: string; password: string}) {
+    async login(data: LoginDTO) {
         const { login, password } = data;
 
-        const user = await UserModel.findOne({ login });
+        const user = await UserModel.findOne({
+            $or: [{ email: login }, { username: login }]
+        });
 
         if (!user) {
             throw new Error("Invalid credentials");
