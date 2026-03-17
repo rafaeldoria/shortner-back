@@ -12,9 +12,10 @@ app.use(cors({
     "http://localhost:5173",
     "https://shortner.it-rod.com"
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
+
+app.options("*", cors());
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
