@@ -15,8 +15,6 @@ app.use(cors({
   credentials: true
 }));
 
-app.options("*", cors());
-
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 200, // 200 requisições por IP
