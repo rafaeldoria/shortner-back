@@ -10,7 +10,8 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",
-    "https://shortner.it-rod.com"
+    "https://shortner.it-rod.com",
+    "https://urlshortner.it-rod.com"
   ],
   credentials: true
 }));
