@@ -1,21 +1,27 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { UserModel } from "./auth.model";
-import { LoginDTO, RegisterDTO } from "./auth.types";
+import { ChangePasswordDTO, LoginDTO, RegisterDTO } from "./auth.types";
 import { env } from "../../config/env";
 
 const MIN_PASSWORD = 5;
+
+export class AuthServiceError extends Error {
+    constructor(message: string, public readonly statusCode: number) {
+        super(message);
+    }
+}
 
 export class AuthService {
     async register(data: RegisterDTO) {
         const { username, email, password } = data;
 
-        if (password.length < MIN_PASSWORD) {
-            throw new Error("Password is not valid.");
+        if (!username || !email || !password) {
+            throw new AuthServiceError("Missing required fields", 400);
         }
 
-        if (!username || !email || !password) {
-            throw new Error("Missing required fields");
+        if (password.length < MIN_PASSWORD) {
+            throw new AuthServiceError("Password is not valid.", 400);
         }
 
         const userExists = await UserModel.findOne({
@@ -23,7 +29,7 @@ export class AuthService {
         });
 
         if (userExists) {
-            throw new Error("User already exists");
+            throw new AuthServiceError("User already exists", 400);
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -45,18 +51,29 @@ export class AuthService {
     async login(data: LoginDTO) {
         const { login, password } = data;
 
+        if (!login || !password) {
+            throw new AuthServiceError("Invalid credentials", 401);
+        }
+
         const user = await UserModel.findOne({
             $or: [{ email: login }, { username: login }]
         });
 
         if (!user) {
-            throw new Error("Invalid credentials");
+            throw new AuthServiceError("Invalid credentials", 401);
         }
 
         const passwordMatch = await bcrypt.compare(password, user.password);
 
         if (!passwordMatch) {
-            throw new Error("Invalid credentials");
+            throw new AuthServiceError("Invalid credentials", 401);
+        }
+
+        if (user.emailVerified !== true) {
+            throw new AuthServiceError(
+                "Please verify your email before logging in",
+                403
+            );
         }
 
         const token = jwt.sign(
@@ -67,6 +84,37 @@ export class AuthService {
 
         return {
             token
+        };
+    }
+
+    async changePassword(userId: string, data: ChangePasswordDTO) {
+        const { currentPassword, newPassword } = data;
+
+        if (!currentPassword || !newPassword) {
+            throw new AuthServiceError("Missing required fields", 400);
+        }
+
+        if (newPassword.length < MIN_PASSWORD) {
+            throw new AuthServiceError("Password is not valid.", 400);
+        }
+
+        const user = await UserModel.findById(userId);
+
+        if (!user) {
+            throw new AuthServiceError("Invalid credentials", 401);
+        }
+
+        const passwordMatch = await bcrypt.compare(currentPassword, user.password);
+
+        if (!passwordMatch) {
+            throw new AuthServiceError("Invalid credentials", 401);
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        await user.save();
+
+        return {
+            message: "Password updated successfully"
         };
     }
 }

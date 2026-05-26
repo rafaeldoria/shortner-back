@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import app from "./app";
 import { connectDatabase } from "./database/mongo";
-import 'dotenv/config';
 import { env } from './config/env';
 
 const port = Number(env.port) || 3100;

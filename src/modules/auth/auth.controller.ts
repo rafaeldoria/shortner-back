@@ -1,7 +1,22 @@
 import { Request, Response } from "express";
-import { AuthService } from "./auth.service";
+import { AuthRequest } from "../../middleware/auth.middleware";
+import { AuthService, AuthServiceError } from "./auth.service";
 
 const authService = new AuthService();
+
+function errorResponse(error: unknown, fallbackStatus: number) {
+    if (error instanceof AuthServiceError) {
+        return {
+            status: error.statusCode,
+            message: error.message
+        };
+    }
+
+    return {
+        status: fallbackStatus,
+        message: error instanceof Error ? error.message : "Unexpected error"
+    };
+}
 
 export class AuthController {
     async register(req: Request, res: Response) {
@@ -13,8 +28,9 @@ export class AuthController {
             const user = await authService.register(req.body);
 
             return res.status(201).json(user);
-        } catch (error: any) {
-            return res.status(400).json({ message: error.message })
+        } catch (error: unknown) {
+            const response = errorResponse(error, 400);
+            return res.status(response.status).json({ message: response.message });
         }
     }
 
@@ -27,8 +43,31 @@ export class AuthController {
             const user = await authService.login(req.body);
 
             return res.status(200).json(user);
-        } catch (error: any) {
-            return res.status(401).json({ message: error.message })
+        } catch (error: unknown) {
+            const response = errorResponse(error, 401);
+            return res.status(response.status).json({ message: response.message });
         }
+    }
+
+    async changePassword(req: AuthRequest, res: Response) {
+        try {
+            if (req.body == undefined) {
+                throw new AuthServiceError("Empty body.", 400);
+            }
+
+            const result = await authService.changePassword(
+                req.userId as string,
+                req.body
+            );
+
+            return res.status(200).json(result);
+        } catch (error: unknown) {
+            const response = errorResponse(error, 400);
+            return res.status(response.status).json({ message: response.message });
+        }
+    }
+
+    logout(_req: AuthRequest, res: Response) {
+        return res.status(200).json({ message: "Logged out successfully" });
     }
 }

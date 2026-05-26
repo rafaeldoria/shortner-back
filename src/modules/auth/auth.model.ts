@@ -4,6 +4,7 @@ export interface IUser {
     username: string;
     email: string;
     password: string;
+    emailVerified: boolean;
     createdAt: Date;
 }
 
@@ -22,6 +23,10 @@ const UserSchema = new Schema<IUser>({
         type: String,
         required: true,
         min: 6
+    },
+    emailVerified: {
+        type: Boolean,
+        default: false
     },
     createdAt: {
         type: Date,
