@@ -21,8 +21,7 @@ const UserSchema = new Schema<IUser>({
     },
     password: {
         type: String,
-        required: true,
-        min: 6
+        required: true
     },
     emailVerified: {
         type: Boolean,

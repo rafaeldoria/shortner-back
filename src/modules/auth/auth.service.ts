@@ -4,7 +4,14 @@ import { UserModel } from "./auth.model";
 import { ChangePasswordDTO, LoginDTO, RegisterDTO } from "./auth.types";
 import { env } from "../../config/env";
 
-const MIN_PASSWORD = 5;
+const MIN_PASSWORD = 6;
+
+function isValidPassword(password: string) {
+    return password.length >= MIN_PASSWORD
+        && /[a-zA-Z]/.test(password)
+        && /\d/.test(password)
+        && /[^a-zA-Z0-9]/.test(password);
+}
 
 export class AuthServiceError extends Error {
     constructor(message: string, public readonly statusCode: number) {
@@ -20,7 +27,7 @@ export class AuthService {
             throw new AuthServiceError("Missing required fields", 400);
         }
 
-        if (password.length < MIN_PASSWORD) {
+        if (!isValidPassword(password)) {
             throw new AuthServiceError("Password is not valid.", 400);
         }
 
@@ -95,7 +102,14 @@ export class AuthService {
             throw new AuthServiceError("Missing required fields", 400);
         }
 
-        if (newPassword.length < MIN_PASSWORD) {
+        if (newPassword === currentPassword) {
+            throw new AuthServiceError(
+                "New password must be different from current password",
+                400
+            );
+        }
+
+        if (!isValidPassword(newPassword)) {
             throw new AuthServiceError("Password is not valid.", 400);
         }
 
