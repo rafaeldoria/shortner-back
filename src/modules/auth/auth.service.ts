@@ -83,7 +83,8 @@ export class AuthService {
         );
 
         return {
-            token
+            token,
+            username: user.username
         };
     }
 
