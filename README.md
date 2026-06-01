@@ -32,7 +32,8 @@ npm ci
 cp .env.example .env
 ```
 
-Preencha o arquivo `.env` com a conexão do MongoDB, URL base e segredo JWT.
+Preencha o arquivo `.env` com a conexão do MongoDB, URL base, URL do frontend,
+segredo JWT e credenciais do Resend para envio de verificação de e-mail.
 Caso `PORT` não seja informada, a API utilizará a porta `3100`.
 
 Para executar em desenvolvimento:
