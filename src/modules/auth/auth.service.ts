@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import { UserModel } from "./auth.model";
 import { ChangePasswordDTO, LoginDTO, RegisterDTO } from "./auth.types";
 import { env } from "../../config/env";
+import { EmailJobModel } from "../email/email-job.model";
+import { isEmailVerificationToken } from "../email/email.service";
 
 const MIN_PASSWORD = 6;
 
@@ -45,6 +47,12 @@ export class AuthService {
             username,
             email,
             password: hashedPassword,
+        });
+
+        await EmailJobModel.create({
+            type: "verify-email",
+            userId: user._id,
+            to: user.email,
         });
 
         return {
@@ -130,6 +138,42 @@ export class AuthService {
 
         return {
             message: "Password updated successfully"
+        };
+    }
+
+    async verifyEmail(token: string) {
+        if (!token) {
+            throw new AuthServiceError("Invalid verification link", 400);
+        }
+
+        let decoded: unknown;
+
+        try {
+            decoded = jwt.verify(token, env.jwtSecret);
+        } catch {
+            throw new AuthServiceError("Invalid or expired verification link", 400);
+        }
+
+        if (!isEmailVerificationToken(decoded)) {
+            throw new AuthServiceError("Invalid verification link", 400);
+        }
+
+        const user = await UserModel.findOne({
+            _id: decoded.userId,
+            email: decoded.email,
+        });
+
+        if (!user) {
+            throw new AuthServiceError("Invalid verification link", 400);
+        }
+
+        if (user.emailVerified !== true) {
+            user.emailVerified = true;
+            await user.save();
+        }
+
+        return {
+            message: "Email verified successfully"
         };
     }
 }

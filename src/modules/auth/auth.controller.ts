@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AuthRequest } from "../../middleware/auth.middleware";
 import { AuthService, AuthServiceError } from "./auth.service";
+import { env } from "../../config/env";
 
 const authService = new AuthService();
 
@@ -16,6 +17,20 @@ function errorResponse(error: unknown, fallbackStatus: number) {
         status: fallbackStatus,
         message: error instanceof Error ? error.message : "Unexpected error"
     };
+}
+
+function verificationRedirect(status: "success" | "error") {
+    if (!env.frontendUrl) {
+        return `/?verified=${status}`;
+    }
+
+    try {
+        const url = new URL("/", env.frontendUrl);
+        url.searchParams.set("verified", status);
+        return url.toString();
+    } catch {
+        return `/?verified=${status}`;
+    }
 }
 
 export class AuthController {
@@ -64,6 +79,20 @@ export class AuthController {
         } catch (error: unknown) {
             const response = errorResponse(error, 400);
             return res.status(response.status).json({ message: response.message });
+        }
+    }
+
+    async verifyEmail(req: Request, res: Response) {
+        try {
+            const token = typeof req.query.token === "string"
+                ? req.query.token
+                : "";
+
+            await authService.verifyEmail(token);
+
+            return res.redirect(verificationRedirect("success"));
+        } catch {
+            return res.redirect(verificationRedirect("error"));
         }
     }
 

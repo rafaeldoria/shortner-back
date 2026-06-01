@@ -10,13 +10,19 @@ const loginLimiter = rateLimit({
   max: 5,
   message: { message: "Too many login attempts" },
 });
+const registerLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { message: "Too many register attempts" },
+});
 
 router.get("/test", (req, res) => {
     res.send('OK');
 });
 
-router.post("/register", controller.register);
+router.post("/register", registerLimiter, controller.register);
 router.post("/login", loginLimiter, controller.login);
+router.get("/verify-email", controller.verifyEmail);
 router.post("/logout", authMiddleware, controller.logout);
 router.patch("/password", authMiddleware, controller.changePassword);
 
