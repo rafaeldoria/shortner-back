@@ -11,6 +11,13 @@ interface SendVerificationEmailParams {
     jobId: string;
 }
 
+interface SendUrlLimitAlertEmailParams {
+    to: string;
+    threshold: number;
+    urlCount: number;
+    jobId: string;
+}
+
 function requiredEnv(value: string | undefined, name: string) {
     if (!value) {
         throw new Error(`${name} is not configured`);
@@ -79,6 +86,37 @@ export class EmailService {
             },
             {
                 idempotencyKey: `verify-email/${params.jobId}`,
+            }
+        );
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        return data?.id;
+    }
+
+    async sendUrlLimitAlertEmail(params: SendUrlLimitAlertEmailParams) {
+        const from = requiredEnv(env.emailFrom, "EMAIL_FROM");
+        const { data, error } = await this.getResend().emails.send(
+            {
+                from,
+                to: [params.to],
+                subject: `Alerta de limite de URLs: ${params.threshold}`,
+                html: `
+                    <p>O Shortner atingiu ${params.urlCount} URLs cadastradas.</p>
+                    <p>Limite monitorado: ${params.threshold} URLs.</p>
+                `,
+                text: `O Shortner atingiu ${params.urlCount} URLs cadastradas.\n\nLimite monitorado: ${params.threshold} URLs.`,
+                tags: [
+                    {
+                        name: "category",
+                        value: "url_limit_alert",
+                    },
+                ],
+            },
+            {
+                idempotencyKey: `url-limit-alert/${params.jobId}`,
             }
         );
 

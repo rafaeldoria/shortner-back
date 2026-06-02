@@ -1,12 +1,14 @@
 import { Schema, Types, model } from "mongoose";
 
-export type EmailJobType = "verify-email";
+export type EmailJobType = "verify-email" | "url-limit-alert";
 export type EmailJobStatus = "pending" | "processing" | "sent" | "failed";
 
 export interface IEmailJob {
     type: EmailJobType;
-    userId: Types.ObjectId;
+    userId?: Types.ObjectId;
     to: string;
+    alertThreshold?: number;
+    urlCount?: number;
     status: EmailJobStatus;
     attempts: number;
     maxAttempts: number;
@@ -23,12 +25,11 @@ const EmailJobSchema = new Schema<IEmailJob>(
         type: {
             type: String,
             required: true,
-            enum: ["verify-email"],
+            enum: ["verify-email", "url-limit-alert"],
         },
         userId: {
             type: Schema.Types.ObjectId,
             ref: "User",
-            required: true,
             index: true,
         },
         to: {
@@ -58,6 +59,8 @@ const EmailJobSchema = new Schema<IEmailJob>(
         lockedAt: Date,
         lastError: String,
         providerMessageId: String,
+        alertThreshold: Number,
+        urlCount: Number,
     },
     {
         timestamps: true,

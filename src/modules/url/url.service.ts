@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { UrlModel } from "./url.model";
 
+const SYSTEM_URL_LIMIT = 150;
+
 export class UrlServiceError extends Error {
   constructor(message: string, public statusCode = 400) {
     super(message);
@@ -32,9 +34,22 @@ function normalizeOriginalUrl(originalUrl: unknown) {
   }
 }
 
+function withClicks<T extends { clicks?: number }>(url: T) {
+  return {
+    ...url,
+    clicks: url.clicks ?? 0,
+  };
+}
+
 export class UrlService {
 
   async create(originalUrl: unknown, userId: string) {
+    const totalCount = await UrlModel.countDocuments({});
+
+    if (totalCount >= SYSTEM_URL_LIMIT) {
+      throw new UrlServiceError("System URL limit reached", 403);
+    }
+
     const count = await UrlModel.countDocuments({ userId });
 
     if (count >= 5) {
@@ -47,6 +62,7 @@ export class UrlService {
     const url = await UrlModel.create({
       code,
       originalUrl: normalizedOriginalUrl,
+      clicks: 0,
       userId,
     });
 
@@ -54,10 +70,12 @@ export class UrlService {
   }
 
   async findByUser(userId: string) {
-    return UrlModel
-      .find({ userId }, 'code originalUrl createdAt -_id')
+    const urls = await UrlModel
+      .find({ userId }, 'code originalUrl clicks createdAt -_id')
       .sort({ createdAt: -1 })
       .lean()
+
+    return urls.map(withClicks);
   }
 
   async update(code: string, originalUrl: unknown, userId: string) {
@@ -69,7 +87,7 @@ export class UrlService {
       {
         returnDocument: "after",
         runValidators: true,
-        projection: "code originalUrl createdAt -_id",
+        projection: "code originalUrl clicks createdAt -_id",
       },
     ).lean();
 
@@ -77,7 +95,7 @@ export class UrlService {
       throw new UrlServiceError("URL not found", 404);
     }
 
-    return url;
+    return withClicks(url);
   }
 
   async delete(code: string, userId: string) {

@@ -33,7 +33,8 @@ cp .env.example .env
 ```
 
 Preencha o arquivo `.env` com a conexão do MongoDB, URL base, URL do frontend,
-segredo JWT e credenciais do Resend para envio de verificação de e-mail.
+segredo JWT, credenciais do Resend para envio de verificação de e-mail e
+`ALERT_SEND_EMAIL` para receber alertas de quantidade total de URLs cadastradas.
 Caso `PORT` não seja informada, a API utilizará a porta `3100`.
 
 Para executar em desenvolvimento:
