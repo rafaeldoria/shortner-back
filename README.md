@@ -55,7 +55,25 @@ Com Docker:
 docker compose up --build
 ```
 
-## 3. Projeto
+## 3. Testes
+
+Os testes unitários utilizam Jest com TypeScript. As dependências externas
+como MongoDB, JWT, bcrypt, Resend e geradores de código são mockadas nos testes,
+sem chamadas reais para banco de dados ou serviços externos.
+
+Para executar a suíte:
+
+```bash
+npm test
+```
+
+Para executar os testes com relatório de cobertura:
+
+```bash
+npm run test:coverage
+```
+
+## 4. Projeto
 
 Backend de um encurtador de URLs: autentica usuários e permite criar e consultar
 links encurtados armazenados no MongoDB.

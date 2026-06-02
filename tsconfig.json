@@ -40,5 +40,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "esModuleInterop": true
-  }
+  },
+  "exclude": ["dist", "src/**/__tests__/**"]
 }
