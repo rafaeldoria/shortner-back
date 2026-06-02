@@ -29,6 +29,7 @@ describe("UrlService", () => {
       const createdUrl = {
         code: "abc1234",
         originalUrl: "https://example.com/path",
+        clicks: 0,
         userId: "user-1",
       };
       mockedUrlModel.countDocuments.mockResolvedValue(0);
@@ -44,6 +45,7 @@ describe("UrlService", () => {
       expect(mockedUrlModel.create).toHaveBeenCalledWith({
         code: "abc1234",
         originalUrl: "https://example.com/path",
+        clicks: 0,
         userId: "user-1",
       });
     });
@@ -84,19 +86,31 @@ describe("UrlService", () => {
 
   describe("findByUser", () => {
     it("returns user URLs sorted by creation date descending", async () => {
-      const urls = [{ code: "abc1234", originalUrl: "https://example.com" }];
+      const urls = [{ code: "abc1234", originalUrl: "https://example.com", clicks: 3 }];
       const lean = jest.fn().mockResolvedValue(urls);
       const sort = jest.fn().mockReturnValue({ lean });
       mockedUrlModel.find.mockReturnValue({ sort } as never);
 
-      await expect(service.findByUser("user-1")).resolves.toBe(urls);
+      await expect(service.findByUser("user-1")).resolves.toEqual(urls);
 
       expect(mockedUrlModel.find).toHaveBeenCalledWith(
         { userId: "user-1" },
-        "code originalUrl createdAt -_id",
+        "code originalUrl clicks createdAt -_id",
       );
       expect(sort).toHaveBeenCalledWith({ createdAt: -1 });
       expect(lean).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns zero clicks for existing URLs without a clicks field", async () => {
+      const lean = jest.fn().mockResolvedValue([
+        { code: "abc1234", originalUrl: "https://example.com" },
+      ]);
+      const sort = jest.fn().mockReturnValue({ lean });
+      mockedUrlModel.find.mockReturnValue({ sort } as never);
+
+      await expect(service.findByUser("user-1")).resolves.toEqual([
+        { code: "abc1234", originalUrl: "https://example.com", clicks: 0 },
+      ]);
     });
   });
 
@@ -105,13 +119,14 @@ describe("UrlService", () => {
       const updatedUrl = {
         code: "abc1234",
         originalUrl: "https://new.example.com",
+        clicks: 7,
       };
       const lean = jest.fn().mockResolvedValue(updatedUrl);
       mockedUrlModel.findOneAndUpdate.mockReturnValue({ lean } as never);
 
       await expect(
         service.update("abc1234", "https://new.example.com", "user-1"),
-      ).resolves.toBe(updatedUrl);
+      ).resolves.toEqual(updatedUrl);
 
       expect(mockedUrlModel.findOneAndUpdate).toHaveBeenCalledWith(
         { code: "abc1234", userId: "user-1" },
@@ -119,9 +134,25 @@ describe("UrlService", () => {
         {
           returnDocument: "after",
           runValidators: true,
-          projection: "code originalUrl createdAt -_id",
+          projection: "code originalUrl clicks createdAt -_id",
         },
       );
+    });
+
+    it("returns zero clicks when updating an existing URL without a clicks field", async () => {
+      const lean = jest.fn().mockResolvedValue({
+        code: "abc1234",
+        originalUrl: "https://new.example.com",
+      });
+      mockedUrlModel.findOneAndUpdate.mockReturnValue({ lean } as never);
+
+      await expect(
+        service.update("abc1234", "https://new.example.com", "user-1"),
+      ).resolves.toEqual({
+        code: "abc1234",
+        originalUrl: "https://new.example.com",
+        clicks: 0,
+      });
     });
 
     it("rejects when the URL does not belong to the user or does not exist", async () => {

@@ -97,7 +97,7 @@ describe("UrlController", () => {
 
   describe("list", () => {
     it("responds with URLs owned by the authenticated user", async () => {
-      const urls = [{ code: "abc1234", originalUrl: "https://example.com" }];
+      const urls = [{ code: "abc1234", originalUrl: "https://example.com", clicks: 3 }];
       mockUrlService.findByUser.mockResolvedValue(urls);
       const req = { userId: "user-1" } as AuthRequest;
       const res = makeResponse();
@@ -115,6 +115,7 @@ describe("UrlController", () => {
       const updatedUrl = {
         code: "abc1234",
         originalUrl: "https://new.example.com",
+        clicks: 7,
       };
       mockUrlService.update.mockResolvedValue(updatedUrl);
       const req = {
