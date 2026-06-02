@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { UrlModel } from "./url.model";
 
+const SYSTEM_URL_LIMIT = 150;
+
 export class UrlServiceError extends Error {
   constructor(message: string, public statusCode = 400) {
     super(message);
@@ -42,6 +44,12 @@ function withClicks<T extends { clicks?: number }>(url: T) {
 export class UrlService {
 
   async create(originalUrl: unknown, userId: string) {
+    const totalCount = await UrlModel.countDocuments({});
+
+    if (totalCount >= SYSTEM_URL_LIMIT) {
+      throw new UrlServiceError("System URL limit reached", 403);
+    }
+
     const count = await UrlModel.countDocuments({ userId });
 
     if (count >= 5) {

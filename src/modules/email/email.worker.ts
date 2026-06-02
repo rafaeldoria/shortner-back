@@ -20,7 +20,7 @@ async function getNextJob() {
 
     return EmailJobModel.findOneAndUpdate(
         {
-            type: "verify-email",
+            type: { $in: ["verify-email", "url-limit-alert"] },
             $expr: { $lt: ["$attempts", "$maxAttempts"] },
             $or: [
                 { status: "pending", nextRunAt: { $lte: now } },
@@ -73,7 +73,48 @@ async function markFailed(jobId: string, attempts: number, maxAttempts: number, 
     });
 }
 
-async function processJob() {
+async function processVerifyEmailJob(job: Awaited<ReturnType<typeof getNextJob>>, jobId: string) {
+    if (!job?.userId) {
+        throw new Error("User not found");
+    }
+
+    const user = await UserModel.findById(job.userId);
+
+    if (!user) {
+        throw new Error("User not found");
+    }
+
+    if (user.emailVerified) {
+        await markSent(jobId);
+        return;
+    }
+
+    const providerMessageId = await emailService.sendVerificationEmail({
+        userId: String(user._id),
+        username: user.username,
+        email: user.email,
+        jobId,
+    });
+
+    await markSent(jobId, providerMessageId);
+}
+
+async function processUrlLimitAlertJob(job: Awaited<ReturnType<typeof getNextJob>>, jobId: string) {
+    if (!job?.alertThreshold || !job.urlCount) {
+        throw new Error("Invalid URL limit alert job");
+    }
+
+    const providerMessageId = await emailService.sendUrlLimitAlertEmail({
+        to: job.to,
+        threshold: job.alertThreshold,
+        urlCount: job.urlCount,
+        jobId,
+    });
+
+    await markSent(jobId, providerMessageId);
+}
+
+export async function processJob() {
     const job = await getNextJob();
 
     if (!job) {
@@ -83,25 +124,11 @@ async function processJob() {
     const jobId = String(job._id);
 
     try {
-        const user = await UserModel.findById(job.userId);
-
-        if (!user) {
-            throw new Error("User not found");
+        if (job.type === "url-limit-alert") {
+            await processUrlLimitAlertJob(job, jobId);
+        } else {
+            await processVerifyEmailJob(job, jobId);
         }
-
-        if (user.emailVerified) {
-            await markSent(jobId);
-            return true;
-        }
-
-        const providerMessageId = await emailService.sendVerificationEmail({
-            userId: String(user._id),
-            username: user.username,
-            email: user.email,
-            jobId,
-        });
-
-        await markSent(jobId, providerMessageId);
     } catch (error) {
         await markFailed(jobId, job.attempts + 1, job.maxAttempts, error);
     }

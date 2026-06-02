@@ -8,4 +8,5 @@ export const env = {
     resendApiKey: process.env.RESEND_API_KEY as string,
     emailFrom: process.env.EMAIL_FROM as string,
     emailVerificationExpires: process.env.EMAIL_VERIFICATION_EXPIRES_IN || '1d',
+    alertSendEmail: process.env.ALERT_SEND_EMAIL as string,
 }

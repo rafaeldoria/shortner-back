@@ -40,7 +40,8 @@ describe("UrlService", () => {
         service.create("  https://example.com/path  ", "user-1"),
       ).resolves.toBe(createdUrl);
 
-      expect(mockedUrlModel.countDocuments).toHaveBeenCalledWith({ userId: "user-1" });
+      expect(mockedUrlModel.countDocuments).toHaveBeenNthCalledWith(1, {});
+      expect(mockedUrlModel.countDocuments).toHaveBeenNthCalledWith(2, { userId: "user-1" });
       expect(mockedNanoid).toHaveBeenCalledWith(7);
       expect(mockedUrlModel.create).toHaveBeenCalledWith({
         code: "abc1234",
@@ -51,7 +52,9 @@ describe("UrlService", () => {
     });
 
     it("rejects when the user has already reached the URL limit", async () => {
-      mockedUrlModel.countDocuments.mockResolvedValue(5);
+      mockedUrlModel.countDocuments
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(5);
 
       await expect(
         service.create("https://example.com", "user-1"),
@@ -60,6 +63,21 @@ describe("UrlService", () => {
         statusCode: 400,
       });
 
+      expect(mockedUrlModel.create).not.toHaveBeenCalled();
+    });
+
+    it("rejects when the system has reached the global URL limit", async () => {
+      mockedUrlModel.countDocuments.mockResolvedValueOnce(150);
+
+      await expect(
+        service.create("https://example.com", "user-1"),
+      ).rejects.toMatchObject({
+        message: "System URL limit reached",
+        statusCode: 403,
+      });
+
+      expect(mockedUrlModel.countDocuments).toHaveBeenCalledWith({});
+      expect(mockedUrlModel.countDocuments).toHaveBeenCalledTimes(1);
       expect(mockedUrlModel.create).not.toHaveBeenCalled();
     });
 

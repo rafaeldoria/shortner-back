@@ -100,6 +100,31 @@ describe("EmailService", () => {
 
     expect(mockSend).not.toHaveBeenCalled();
   });
+
+  it("sends a URL limit alert email with idempotency key", async () => {
+    mockSend.mockResolvedValue({ data: { id: "email-2" }, error: null });
+
+    const messageId = await new EmailService().sendUrlLimitAlertEmail({
+      to: "alerts@example.com",
+      threshold: 100,
+      urlCount: 123,
+      jobId: "job-2",
+    });
+
+    expect(messageId).toBe("email-2");
+    expect(mockSend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: "Shortner <noreply@example.com>",
+        to: ["alerts@example.com"],
+        subject: "Alerta de limite de URLs: 100",
+        html: expect.stringContaining("123 URLs cadastradas"),
+        text: expect.stringContaining("Limite monitorado: 100 URLs"),
+      }),
+      {
+        idempotencyKey: "url-limit-alert/job-2",
+      },
+    );
+  });
 });
 
 describe("isEmailVerificationToken", () => {
