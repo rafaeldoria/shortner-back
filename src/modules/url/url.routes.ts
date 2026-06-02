@@ -7,5 +7,7 @@ const controller = new UrlController();
 
 router.post("/", authMiddleware, controller.create);
 router.get("/", authMiddleware, controller.list);
+router.patch("/:code", authMiddleware, controller.update);
+router.delete("/:code", authMiddleware, controller.delete);
 
 export default router;
