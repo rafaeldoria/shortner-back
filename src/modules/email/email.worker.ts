@@ -9,6 +9,22 @@ const JOBS_PER_TICK = 10;
 const emailService = new EmailService();
 let isRunning = false;
 
+function logEmailWorker(message: string, context?: Record<string, unknown>) {
+    if (process.env.NODE_ENV === "test") {
+        return;
+    }
+
+    console.info(`[email-worker] ${message}`, context ?? {});
+}
+
+function logEmailWorkerError(message: string, context?: Record<string, unknown>) {
+    if (process.env.NODE_ENV === "test") {
+        return;
+    }
+
+    console.error(`[email-worker] ${message}`, context ?? {});
+}
+
 function getRetryDate(attempts: number) {
     const delayMinutes = Math.min(2 ** attempts, 30);
     return new Date(Date.now() + delayMinutes * 60 * 1000);
@@ -54,6 +70,8 @@ async function markSent(jobId: string, providerMessageId?: string) {
             lastError: "",
         },
     });
+
+    logEmailWorker("job marked as sent", { jobId, providerMessageId });
 }
 
 async function markFailed(jobId: string, attempts: number, maxAttempts: number, error: unknown) {
@@ -71,6 +89,14 @@ async function markFailed(jobId: string, attempts: number, maxAttempts: number, 
             lockedAt: "",
         },
     });
+
+    logEmailWorkerError("job failed", {
+        jobId,
+        attempts,
+        maxAttempts,
+        nextStatus: status,
+        error: message,
+    });
 }
 
 async function processVerifyEmailJob(job: Awaited<ReturnType<typeof getNextJob>>, jobId: string) {
@@ -86,6 +112,7 @@ async function processVerifyEmailJob(job: Awaited<ReturnType<typeof getNextJob>>
 
     if (user.emailVerified) {
         await markSent(jobId);
+        logEmailWorker("verification job skipped because user is already verified", { jobId });
         return;
     }
 
@@ -97,6 +124,7 @@ async function processVerifyEmailJob(job: Awaited<ReturnType<typeof getNextJob>>
     });
 
     await markSent(jobId, providerMessageId);
+    logEmailWorker("verification email sent", { jobId, providerMessageId });
 }
 
 async function processUrlLimitAlertJob(job: Awaited<ReturnType<typeof getNextJob>>, jobId: string) {
@@ -112,6 +140,12 @@ async function processUrlLimitAlertJob(job: Awaited<ReturnType<typeof getNextJob
     });
 
     await markSent(jobId, providerMessageId);
+    logEmailWorker("url limit alert email sent", {
+        jobId,
+        threshold: job.alertThreshold,
+        urlCount: job.urlCount,
+        providerMessageId,
+    });
 }
 
 export async function processJob() {
@@ -122,6 +156,12 @@ export async function processJob() {
     }
 
     const jobId = String(job._id);
+    logEmailWorker("processing job", {
+        jobId,
+        type: job.type,
+        attempts: job.attempts,
+        maxAttempts: job.maxAttempts,
+    });
 
     try {
         if (job.type === "url-limit-alert") {
@@ -157,6 +197,7 @@ async function processAvailableJobs() {
 }
 
 export function startEmailWorker() {
+    logEmailWorker("started", { pollIntervalMs: POLL_INTERVAL_MS });
     void processAvailableJobs();
     return setInterval(() => {
         void processAvailableJobs();

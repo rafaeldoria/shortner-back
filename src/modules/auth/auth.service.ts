@@ -8,6 +8,14 @@ import { isEmailVerificationToken } from "../email/email.service";
 
 const MIN_PASSWORD = 6;
 
+function logAuthEvent(message: string, context?: Record<string, unknown>) {
+    if (process.env.NODE_ENV === "test") {
+        return;
+    }
+
+    console.info(`[auth] ${message}`, context ?? {});
+}
+
 function isValidPassword(password: string) {
     return password.length >= MIN_PASSWORD
         && /[a-zA-Z]/.test(password)
@@ -49,10 +57,15 @@ export class AuthService {
             password: hashedPassword,
         });
 
-        await EmailJobModel.create({
+        const emailJob = await EmailJobModel.create({
             type: "verify-email",
             userId: user._id,
             to: user.email,
+        });
+
+        logAuthEvent("verification email job queued", {
+            userId: String(user._id),
+            jobId: String(emailJob._id),
         });
 
         return {
