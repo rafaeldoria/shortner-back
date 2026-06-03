@@ -26,6 +26,32 @@ function requiredEnv(value: string | undefined, name: string) {
     return value;
 }
 
+function logEmailService(message: string, context?: Record<string, unknown>) {
+    if (process.env.NODE_ENV === "test") {
+        return;
+    }
+
+    console.info(`[email-service] ${message}`, context ?? {});
+}
+
+function logEmailServiceError(message: string, context?: Record<string, unknown>) {
+    if (process.env.NODE_ENV === "test") {
+        return;
+    }
+
+    console.error(`[email-service] ${message}`, context ?? {});
+}
+
+function maskEmail(email: string) {
+    const [local, domain] = email.split("@");
+
+    if (!local || !domain) {
+        return email;
+    }
+
+    return `${local.slice(0, 2)}***@${domain}`;
+}
+
 function escapeHtml(value: string) {
     return value
         .replace(/&/g, "&amp;")
@@ -59,11 +85,42 @@ export class EmailService {
             { expiresIn: env.emailVerificationExpires as any }
         );
 
-        const verificationUrl = new URL("/auth/verify-email", baseUrl);
+        logEmailService("building verification URL", {
+            jobId: params.jobId,
+            baseUrl,
+            path: "/auth/verify-email",
+        });
+
+        let verificationUrl: URL;
+
+        try {
+            verificationUrl = new URL("/auth/verify-email", baseUrl);
+        } catch (error) {
+            logEmailServiceError("failed to build verification URL", {
+                jobId: params.jobId,
+                baseUrl,
+                path: "/auth/verify-email",
+                error: error instanceof Error ? error.message : "Unexpected error",
+            });
+            throw error;
+        }
+
         verificationUrl.searchParams.set("token", token);
 
         const safeUsername = escapeHtml(params.username);
         const url = verificationUrl.toString();
+        const debugUrl = new URL(url);
+        debugUrl.searchParams.set("token", "[redacted]");
+        const idempotencyKey = `verify-email/${params.jobId}`;
+
+        logEmailService("sending verification email", {
+            jobId: params.jobId,
+            from,
+            to: maskEmail(params.email),
+            verificationUrl: debugUrl.toString(),
+            tokenLength: token.length,
+            idempotencyKey,
+        });
 
         const { data, error } = await this.getResend().emails.send(
             {
@@ -85,19 +142,39 @@ export class EmailService {
                 ],
             },
             {
-                idempotencyKey: `verify-email/${params.jobId}`,
+                idempotencyKey,
             }
         );
 
         if (error) {
+            logEmailServiceError("resend rejected verification email", {
+                jobId: params.jobId,
+                error: error.message,
+            });
             throw new Error(error.message);
         }
+
+        logEmailService("verification email accepted by provider", {
+            jobId: params.jobId,
+            providerMessageId: data?.id,
+        });
 
         return data?.id;
     }
 
     async sendUrlLimitAlertEmail(params: SendUrlLimitAlertEmailParams) {
         const from = requiredEnv(env.emailFrom, "EMAIL_FROM");
+        const idempotencyKey = `url-limit-alert/${params.jobId}`;
+
+        logEmailService("sending URL limit alert email", {
+            jobId: params.jobId,
+            from,
+            to: maskEmail(params.to),
+            threshold: params.threshold,
+            urlCount: params.urlCount,
+            idempotencyKey,
+        });
+
         const { data, error } = await this.getResend().emails.send(
             {
                 from,
@@ -116,13 +193,24 @@ export class EmailService {
                 ],
             },
             {
-                idempotencyKey: `url-limit-alert/${params.jobId}`,
+                idempotencyKey,
             }
         );
 
         if (error) {
+            logEmailServiceError("resend rejected URL limit alert email", {
+                jobId: params.jobId,
+                threshold: params.threshold,
+                urlCount: params.urlCount,
+                error: error.message,
+            });
             throw new Error(error.message);
         }
+
+        logEmailService("URL limit alert email accepted by provider", {
+            jobId: params.jobId,
+            providerMessageId: data?.id,
+        });
 
         return data?.id;
     }
