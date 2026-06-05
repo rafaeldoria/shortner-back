@@ -8,5 +8,6 @@ export async function connectDatabase() {
     console.log("✅ Mongo connected");
   } catch (error) {
     console.error("❌ Mongo connection error:", error);
+    throw error;
   }
 }

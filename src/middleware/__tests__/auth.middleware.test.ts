@@ -25,6 +25,8 @@ function makeResponse() {
 
 describe("authMiddleware", () => {
   beforeEach(() => {
+    jest.resetAllMocks();
+    env.authCookieName = "shortner_session";
     env.jwtSecret = "test-secret";
   });
 
@@ -62,9 +64,47 @@ describe("authMiddleware", () => {
 
     authMiddleware(req, res, next);
 
-    expect(mockedJwt.verify).toHaveBeenCalledWith("valid-token", "test-secret");
+    expect(mockedJwt.verify).toHaveBeenCalledWith(
+      "valid-token",
+      "test-secret",
+      { algorithms: ["HS256"] },
+    );
     expect(req.userId).toBe("user-1");
     expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("sets userId from the auth cookie when no bearer token is present", () => {
+    const req = {
+      headers: { cookie: "theme=dark; shortner_session=cookie-token" },
+    } as AuthRequest;
+    const res = makeResponse();
+    const next = jest.fn();
+    mockedJwt.verify.mockReturnValue({ userId: "user-1" } as never);
+
+    authMiddleware(req, res, next);
+
+    expect(mockedJwt.verify).toHaveBeenCalledWith(
+      "cookie-token",
+      "test-secret",
+      { algorithms: ["HS256"] },
+    );
+    expect(req.userId).toBe("user-1");
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects tokens without a string userId", () => {
+    const req = {
+      headers: { authorization: "Bearer valid-token" },
+    } as AuthRequest;
+    const res = makeResponse();
+    const next = jest.fn();
+    mockedJwt.verify.mockReturnValue({ userId: 123 } as never);
+
+    authMiddleware(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ message: "Invalid token" });
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("rejects invalid tokens", () => {

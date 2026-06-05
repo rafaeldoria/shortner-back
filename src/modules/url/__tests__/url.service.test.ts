@@ -24,6 +24,10 @@ const mockedUrlModel = jest.mocked(UrlModel);
 describe("UrlService", () => {
   const service = new UrlService();
 
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
   describe("create", () => {
     it("creates a short URL with a generated code and normalized original URL", async () => {
       const createdUrl = {
@@ -96,8 +100,77 @@ describe("UrlService", () => {
       await expect(
         service.create("ftp://example.com/file", "user-1"),
       ).rejects.toMatchObject({
-        message: "originalUrl must be a valid http or https URL",
+        message: "originalUrl must be a valid public http or https URL",
         statusCode: 400,
+      });
+    });
+
+    it("rejects URLs pointing to private or local hosts", async () => {
+      mockedUrlModel.countDocuments.mockResolvedValue(0);
+
+      await expect(
+        service.create("https://127.0.0.1/admin", "user-1"),
+      ).rejects.toMatchObject({
+        message: "originalUrl must be a valid public http or https URL",
+        statusCode: 400,
+      });
+
+      await expect(
+        service.create("https://localhost/admin", "user-1"),
+      ).rejects.toMatchObject({
+        message: "originalUrl must be a valid public http or https URL",
+        statusCode: 400,
+      });
+    });
+
+    it("rejects URLs with embedded credentials", async () => {
+      mockedUrlModel.countDocuments.mockResolvedValue(0);
+
+      await expect(
+        service.create("https://user:pass@example.com", "user-1"),
+      ).rejects.toMatchObject({
+        message: "originalUrl must be a valid public http or https URL",
+        statusCode: 400,
+      });
+    });
+
+    it("rejects URLs longer than the accepted maximum", async () => {
+      mockedUrlModel.countDocuments.mockResolvedValue(0);
+
+      await expect(
+        service.create(`https://example.com/${"a".repeat(2048)}`, "user-1"),
+      ).rejects.toMatchObject({
+        message: "originalUrl is too long",
+        statusCode: 400,
+      });
+    });
+
+    it("retries when a generated short code collides", async () => {
+      const duplicateKeyError = { code: 11000 };
+      const createdUrl = {
+        code: "def5678",
+        originalUrl: "https://example.com/path",
+        clicks: 0,
+        userId: "user-1",
+      };
+      mockedUrlModel.countDocuments.mockResolvedValue(0);
+      mockedNanoid
+        .mockReturnValueOnce("abc1234")
+        .mockReturnValueOnce("def5678");
+      mockedUrlModel.create
+        .mockRejectedValueOnce(duplicateKeyError)
+        .mockResolvedValueOnce(createdUrl as never);
+
+      await expect(
+        service.create("https://example.com/path", "user-1"),
+      ).resolves.toBe(createdUrl);
+
+      expect(mockedUrlModel.create).toHaveBeenCalledTimes(2);
+      expect(mockedUrlModel.create).toHaveBeenNthCalledWith(2, {
+        code: "def5678",
+        originalUrl: "https://example.com/path",
+        clicks: 0,
+        userId: "user-1",
       });
     });
   });

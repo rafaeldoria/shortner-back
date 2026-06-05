@@ -14,10 +14,12 @@ const UrlSchema = new Schema<IUrl>({
     required: true,
     unique: true,
     index: true,
+    maxlength: 32,
   },
   originalUrl: {
     type: String,
     required: true,
+    maxlength: 2048,
   },
   clicks: {
     type: Number,

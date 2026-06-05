@@ -6,9 +6,45 @@ import { env } from "../../config/env";
 import { EmailJobModel } from "../email/email-job.model";
 import { isEmailVerificationToken } from "../email/email.service";
 
-const MIN_PASSWORD = 6;
+const MIN_PASSWORD = 8;
 
-function isValidPassword(password: string) {
+function normalizeRequiredString(value: unknown, maxLength: number) {
+    if (typeof value !== "string") {
+        return "";
+    }
+
+    return value.trim().slice(0, maxLength);
+}
+
+function normalizeEmail(value: unknown) {
+    const email = normalizeRequiredString(value, 254).toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return "";
+    }
+
+    return email;
+}
+
+function normalizeUsername(value: unknown) {
+    const username = normalizeRequiredString(value, 64).toLowerCase();
+
+    if (!/^[a-z0-9._-]{3,64}$/.test(username)) {
+        return "";
+    }
+
+    return username;
+}
+
+function isValidPassword(password: unknown) {
+    if (typeof password !== "string") {
+        return false;
+    }
+
+    if (password.trim() !== password) {
+        return false;
+    }
+
     return password.length >= MIN_PASSWORD
         && /[a-zA-Z]/.test(password)
         && /\d/.test(password)
@@ -23,7 +59,9 @@ export class AuthServiceError extends Error {
 
 export class AuthService {
     async register(data: RegisterDTO) {
-        const { username, email, password } = data;
+        const username = normalizeUsername(data.username);
+        const email = normalizeEmail(data.email);
+        const { password } = data;
 
         if (!username || !email || !password) {
             throw new AuthServiceError("Missing required fields", 400);
@@ -38,7 +76,7 @@ export class AuthService {
         });
 
         if (userExists) {
-            throw new AuthServiceError("User already exists", 400);
+            throw new AuthServiceError("Unable to create account with these details", 400);
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -64,7 +102,8 @@ export class AuthService {
     }
 
     async login(data: LoginDTO) {
-        const { login, password } = data;
+        const login = normalizeRequiredString(data.login, 254).toLowerCase();
+        const { password } = data;
 
         if (!login || !password) {
             throw new AuthServiceError("Invalid credentials", 401);
@@ -94,7 +133,7 @@ export class AuthService {
         const token = jwt.sign(
             { userId: user._id },
             env.jwtSecret,
-            { expiresIn: env.jwtExpires as any }
+            { algorithm: "HS256", expiresIn: env.jwtExpires as any }
         );
 
         return {
@@ -149,7 +188,7 @@ export class AuthService {
         let decoded: unknown;
 
         try {
-            decoded = jwt.verify(token, env.jwtSecret);
+            decoded = jwt.verify(token, env.jwtSecret, { algorithms: ["HS256"] });
         } catch {
             throw new AuthServiceError("Invalid or expired verification link", 400);
         }

@@ -41,6 +41,8 @@ function makeResponse() {
     status: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
     redirect: jest.fn().mockReturnThis(),
+    cookie: jest.fn().mockReturnThis(),
+    clearCookie: jest.fn().mockReturnThis(),
   };
 
   return res as unknown as Response & typeof res;
@@ -50,6 +52,8 @@ describe("AuthController", () => {
   const controller = new AuthController();
 
   beforeEach(() => {
+    jest.clearAllMocks();
+    env.authCookieName = "shortner_session";
     env.frontendUrl = "https://app.example.com";
   });
 
@@ -91,15 +95,22 @@ describe("AuthController", () => {
         token: "jwt-token",
         username: "ti",
       });
-      const req = { body: { login: "ti", password: "Strong1!" } } as Request;
+      const req = { body: { login: "ti", password: "StrongPass1!" } } as Request;
       const res = makeResponse();
 
       await controller.login(req, res);
 
       expect(mockAuthService.login).toHaveBeenCalledWith(req.body);
+      expect(res.cookie).toHaveBeenCalledWith(
+        "shortner_session",
+        "jwt-token",
+        expect.objectContaining({
+          httpOnly: true,
+          sameSite: "lax",
+        }),
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        token: "jwt-token",
         username: "ti",
       });
     });
@@ -124,8 +135,8 @@ describe("AuthController", () => {
       const req = {
         userId: "user-1",
         body: {
-          currentPassword: "Current1!",
-          newPassword: "Newpass1!",
+          currentPassword: "Current123!",
+          newPassword: "Newpass123!",
         },
       } as AuthRequest;
       const res = makeResponse();
@@ -171,6 +182,13 @@ describe("AuthController", () => {
 
     controller.logout(req, res);
 
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      "shortner_session",
+      expect.objectContaining({
+        httpOnly: true,
+        sameSite: "lax",
+      }),
+    );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ message: "Logged out successfully" });
   });

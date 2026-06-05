@@ -56,7 +56,7 @@ export class EmailService {
                 purpose: EMAIL_VERIFICATION_PURPOSE,
             },
             env.jwtSecret,
-            { expiresIn: env.emailVerificationExpires as any }
+            { algorithm: "HS256", expiresIn: env.emailVerificationExpires as any }
         );
 
         const verificationUrl = new URL("/auth/verify-email", baseUrl);

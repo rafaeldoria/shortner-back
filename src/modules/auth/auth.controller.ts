@@ -4,6 +4,12 @@ import { AuthService, AuthServiceError } from "./auth.service";
 import { env } from "../../config/env";
 
 const authService = new AuthService();
+const authCookieOptions = {
+    httpOnly: true,
+    secure: env.nodeEnv === "production",
+    sameSite: "lax" as const,
+    path: "/",
+};
 
 function errorResponse(error: unknown, fallbackStatus: number) {
     if (error instanceof AuthServiceError) {
@@ -57,7 +63,11 @@ export class AuthController {
 
             const user = await authService.login(req.body);
 
-            return res.status(200).json(user);
+            res.cookie(env.authCookieName, user.token, authCookieOptions);
+
+            return res.status(200).json({
+                username: user.username
+            });
         } catch (error: unknown) {
             const response = errorResponse(error, 401);
             return res.status(response.status).json({ message: response.message });
@@ -97,6 +107,7 @@ export class AuthController {
     }
 
     logout(_req: AuthRequest, res: Response) {
+        res.clearCookie(env.authCookieName, authCookieOptions);
         return res.status(200).json({ message: "Logged out successfully" });
     }
 }
