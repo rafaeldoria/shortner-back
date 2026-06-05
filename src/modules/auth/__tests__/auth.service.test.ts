@@ -46,6 +46,7 @@ describe("AuthService", () => {
   const service = new AuthService();
 
   beforeEach(() => {
+    jest.resetAllMocks();
     env.jwtSecret = "test-secret";
     env.jwtExpires = "1h";
   });
@@ -57,7 +58,7 @@ describe("AuthService", () => {
       mockedBcrypt.hash.mockResolvedValue("hashed-password" as never);
       mockedUserModel.create.mockResolvedValue({
         _id: "user-1",
-        username: "ti",
+        username: "tir",
         email: "ti@example.com",
         createdAt,
       } as never);
@@ -65,23 +66,23 @@ describe("AuthService", () => {
 
       await expect(
         service.register({
-          username: "ti",
+          username: "tir",
           email: "ti@example.com",
-          password: "Strong1!",
+          password: "StrongPass1!",
         }),
       ).resolves.toEqual({
         id: "user-1",
-        username: "ti",
+        username: "tir",
         email: "ti@example.com",
         createdAt,
       });
 
       expect(mockedUserModel.findOne).toHaveBeenCalledWith({
-        $or: [{ username: "ti" }, { email: "ti@example.com" }],
+        $or: [{ username: "tir" }, { email: "ti@example.com" }],
       });
-      expect(mockedBcrypt.hash).toHaveBeenCalledWith("Strong1!", 10);
+      expect(mockedBcrypt.hash).toHaveBeenCalledWith("StrongPass1!", 10);
       expect(mockedUserModel.create).toHaveBeenCalledWith({
-        username: "ti",
+        username: "tir",
         email: "ti@example.com",
         password: "hashed-password",
       });
@@ -94,7 +95,7 @@ describe("AuthService", () => {
 
     it("rejects missing required fields", async () => {
       await expect(
-        service.register({ username: "", email: "ti@example.com", password: "Strong1!" }),
+        service.register({ username: "", email: "ti@example.com", password: "StrongPass1!" }),
       ).rejects.toMatchObject({
         message: "Missing required fields",
         statusCode: 400,
@@ -105,7 +106,7 @@ describe("AuthService", () => {
 
     it("rejects weak passwords", async () => {
       await expect(
-        service.register({ username: "ti", email: "ti@example.com", password: "123456" }),
+        service.register({ username: "tir", email: "ti@example.com", password: "123456" }),
       ).rejects.toMatchObject({
         message: "Password is not valid.",
         statusCode: 400,
@@ -117,12 +118,12 @@ describe("AuthService", () => {
 
       await expect(
         service.register({
-          username: "ti",
+          username: "tir",
           email: "ti@example.com",
-          password: "Strong1!",
+          password: "StrongPass1!",
         }),
       ).rejects.toMatchObject({
-        message: "User already exists",
+        message: "Unable to create account with these details",
         statusCode: 400,
       });
 
@@ -143,7 +144,7 @@ describe("AuthService", () => {
       mockedJwt.sign.mockReturnValue("signed-token" as never);
 
       await expect(
-        service.login({ login: "ti@example.com", password: "Strong1!" }),
+        service.login({ login: "ti@example.com", password: "StrongPass1!" }),
       ).resolves.toEqual({
         token: "signed-token",
         username: "ti",
@@ -152,11 +153,11 @@ describe("AuthService", () => {
       expect(mockedUserModel.findOne).toHaveBeenCalledWith({
         $or: [{ email: "ti@example.com" }, { username: "ti@example.com" }],
       });
-      expect(mockedBcrypt.compare).toHaveBeenCalledWith("Strong1!", "hashed-password");
+      expect(mockedBcrypt.compare).toHaveBeenCalledWith("StrongPass1!", "hashed-password");
       expect(mockedJwt.sign).toHaveBeenCalledWith(
         { userId: "user-1" },
         "test-secret",
-        { expiresIn: "1h" },
+        { algorithm: "HS256", expiresIn: "1h" },
       );
     });
 
@@ -164,7 +165,7 @@ describe("AuthService", () => {
       mockedUserModel.findOne.mockResolvedValue(null);
 
       await expect(
-        service.login({ login: "missing@example.com", password: "Strong1!" }),
+        service.login({ login: "missing@example.com", password: "StrongPass1!" }),
       ).rejects.toMatchObject({
         message: "Invalid credentials",
         statusCode: 401,
@@ -180,7 +181,7 @@ describe("AuthService", () => {
       mockedBcrypt.compare.mockResolvedValue(false as never);
 
       await expect(
-        service.login({ login: "ti", password: "Wrong1!" }),
+        service.login({ login: "ti", password: "WrongPass1!" }),
       ).rejects.toMatchObject({
         message: "Invalid credentials",
         statusCode: 401,
@@ -195,7 +196,7 @@ describe("AuthService", () => {
       mockedBcrypt.compare.mockResolvedValue(true as never);
 
       await expect(
-        service.login({ login: "ti", password: "Strong1!" }),
+        service.login({ login: "ti", password: "StrongPass1!" }),
       ).rejects.toMatchObject({
         message: "Please verify your email before logging in",
         statusCode: 403,
@@ -217,8 +218,8 @@ describe("AuthService", () => {
 
       await expect(
         service.changePassword("user-1", {
-          currentPassword: "Current1!",
-          newPassword: "Newpass1!",
+          currentPassword: "Current123!",
+          newPassword: "Newpass123!",
         }),
       ).resolves.toEqual({
         message: "Password updated successfully",
@@ -231,11 +232,39 @@ describe("AuthService", () => {
     it("rejects when new password is equal to the current password", async () => {
       await expect(
         service.changePassword("user-1", {
-          currentPassword: "Samepass1!",
-          newPassword: "Samepass1!",
+          currentPassword: "Samepass123!",
+          newPassword: "Samepass123!",
         }),
       ).rejects.toMatchObject({
         message: "New password must be different from current password",
+        statusCode: 400,
+      });
+
+      expect(mockedUserModel.findById).not.toHaveBeenCalled();
+    });
+
+    it("rejects new passwords shorter than 8 characters", async () => {
+      await expect(
+        service.changePassword("user-1", {
+          currentPassword: "Current123!",
+          newPassword: "Abc123.",
+        }),
+      ).rejects.toMatchObject({
+        message: "Password is not valid.",
+        statusCode: 400,
+      });
+
+      expect(mockedUserModel.findById).not.toHaveBeenCalled();
+    });
+
+    it("rejects new passwords with leading or trailing whitespace", async () => {
+      await expect(
+        service.changePassword("user-1", {
+          currentPassword: "Current123!",
+          newPassword: "Abc123. ",
+        }),
+      ).rejects.toMatchObject({
+        message: "Password is not valid.",
         statusCode: 400,
       });
 
@@ -248,8 +277,8 @@ describe("AuthService", () => {
 
       await expect(
         service.changePassword("user-1", {
-          currentPassword: "Current1!",
-          newPassword: "Newpass1!",
+          currentPassword: "Current123!",
+          newPassword: "Newpass123!",
         }),
       ).rejects.toMatchObject({
         message: "Invalid credentials",

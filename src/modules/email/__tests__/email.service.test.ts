@@ -27,6 +27,7 @@ const mockedResend = jest.mocked(Resend);
 
 describe("EmailService", () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     env.baseUrl = "https://api.example.com";
     env.emailFrom = "Shortner <noreply@example.com>";
     env.jwtSecret = "test-secret";
@@ -54,7 +55,7 @@ describe("EmailService", () => {
         purpose: "email-verification",
       },
       "test-secret",
-      { expiresIn: "1d" },
+      { algorithm: "HS256", expiresIn: "1d" },
     );
     expect(mockSend).toHaveBeenCalledWith(
       expect.objectContaining({
