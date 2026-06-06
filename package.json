@@ -1,5 +1,5 @@
 {
-  "name": "url-shortner-api",
+  "name": "url-shortener-api",
   "version": "1.0.0",
   "main": "main/server.js",
   "scripts": {

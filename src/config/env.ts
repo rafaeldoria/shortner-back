@@ -7,7 +7,7 @@ export const env = {
     corsOrigins: process.env.CORS_ORIGINS as string,
     jwtSecret: process.env.JWT_SECRET as string,
     jwtExpires: process.env.JWT_EXPIRES_IN as string,
-    authCookieName: process.env.AUTH_COOKIE_NAME || 'shortner_session',
+    authCookieName: process.env.AUTH_COOKIE_NAME || 'shortener_session',
     resendApiKey: process.env.RESEND_API_KEY as string,
     emailFrom: process.env.EMAIL_FROM as string,
     emailVerificationExpires: process.env.EMAIL_VERIFICATION_EXPIRES_IN || '1d',

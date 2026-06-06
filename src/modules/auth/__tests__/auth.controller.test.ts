@@ -53,7 +53,7 @@ describe("AuthController", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    env.authCookieName = "shortner_session";
+    env.authCookieName = "shortener_session";
     env.frontendUrl = "https://app.example.com";
   });
 
@@ -102,7 +102,7 @@ describe("AuthController", () => {
 
       expect(mockAuthService.login).toHaveBeenCalledWith(req.body);
       expect(res.cookie).toHaveBeenCalledWith(
-        "shortner_session",
+        "shortener_session",
         "jwt-token",
         expect.objectContaining({
           httpOnly: true,
@@ -183,7 +183,7 @@ describe("AuthController", () => {
     controller.logout(req, res);
 
     expect(res.clearCookie).toHaveBeenCalledWith(
-      "shortner_session",
+      "shortener_session",
       expect.objectContaining({
         httpOnly: true,
         sameSite: "lax",

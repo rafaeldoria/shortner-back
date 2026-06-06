@@ -26,7 +26,7 @@ function makeResponse() {
 describe("authMiddleware", () => {
   beforeEach(() => {
     jest.resetAllMocks();
-    env.authCookieName = "shortner_session";
+    env.authCookieName = "shortener_session";
     env.jwtSecret = "test-secret";
   });
 
@@ -75,7 +75,7 @@ describe("authMiddleware", () => {
 
   it("sets userId from the auth cookie when no bearer token is present", () => {
     const req = {
-      headers: { cookie: "theme=dark; shortner_session=cookie-token" },
+      headers: { cookie: "theme=dark; shortener_session=cookie-token" },
     } as AuthRequest;
     const res = makeResponse();
     const next = jest.fn();
