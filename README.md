@@ -1,4 +1,4 @@
-# Shortner Back
+# Shortener Back
 
 ## 1. Arquitetura do projeto
 

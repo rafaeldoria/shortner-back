@@ -8,8 +8,8 @@ import { env } from "./config/env";
 
 const DEFAULT_CORS_ORIGINS = [
   "http://localhost:5173",
-  "https://shortner.it-rod.com",
-  "https://urlshortner.it-rod.com",
+  "https://shortener.it-rod.com",
+  "https://urlshortener.it-rod.com",
 ];
 
 function getAllowedOrigins() {

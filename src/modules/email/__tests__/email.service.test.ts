@@ -29,7 +29,7 @@ describe("EmailService", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     env.baseUrl = "https://api.example.com";
-    env.emailFrom = "Shortner <noreply@example.com>";
+    env.emailFrom = "Shortener <noreply@example.com>";
     env.jwtSecret = "test-secret";
     env.emailVerificationExpires = "1d";
     env.resendApiKey = "re_test";
@@ -59,7 +59,7 @@ describe("EmailService", () => {
     );
     expect(mockSend).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: "Shortner <noreply@example.com>",
+        from: "Shortener <noreply@example.com>",
         to: ["ti@example.com"],
         subject: "Valide seu e-mail",
         html: expect.stringContaining("Ti &lt;Admin&gt;"),
@@ -115,7 +115,7 @@ describe("EmailService", () => {
     expect(messageId).toBe("email-2");
     expect(mockSend).toHaveBeenCalledWith(
       expect.objectContaining({
-        from: "Shortner <noreply@example.com>",
+        from: "Shortener <noreply@example.com>",
         to: ["alerts@example.com"],
         subject: "Alerta de limite de URLs: 100",
         html: expect.stringContaining("123 URLs cadastradas"),

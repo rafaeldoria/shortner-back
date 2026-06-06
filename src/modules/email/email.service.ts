@@ -72,11 +72,11 @@ export class EmailService {
                 subject: "Valide seu e-mail",
                 html: `
                     <p>Olá, ${safeUsername}.</p>
-                    <p>Confirme seu e-mail para ativar sua conta no Shortner.</p>
+                    <p>Confirme seu e-mail para ativar sua conta no Shortener.</p>
                     <p><a href="${url}">Validar e-mail</a></p>
                     <p>Se você não criou essa conta, ignore esta mensagem.</p>
                 `,
-                text: `Olá, ${params.username}.\n\nConfirme seu e-mail para ativar sua conta no Shortner: ${url}\n\nSe você não criou essa conta, ignore esta mensagem.`,
+                text: `Olá, ${params.username}.\n\nConfirme seu e-mail para ativar sua conta no Shortener: ${url}\n\nSe você não criou essa conta, ignore esta mensagem.`,
                 tags: [
                     {
                         name: "category",
@@ -104,10 +104,10 @@ export class EmailService {
                 to: [params.to],
                 subject: `Alerta de limite de URLs: ${params.threshold}`,
                 html: `
-                    <p>O Shortner atingiu ${params.urlCount} URLs cadastradas.</p>
+                    <p>O Shortener atingiu ${params.urlCount} URLs cadastradas.</p>
                     <p>Limite monitorado: ${params.threshold} URLs.</p>
                 `,
-                text: `O Shortner atingiu ${params.urlCount} URLs cadastradas.\n\nLimite monitorado: ${params.threshold} URLs.`,
+                text: `O Shortener atingiu ${params.urlCount} URLs cadastradas.\n\nLimite monitorado: ${params.threshold} URLs.`,
                 tags: [
                     {
                         name: "category",
